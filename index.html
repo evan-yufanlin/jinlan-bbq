@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>金蘭中秋烤肉</title>
+<title>金蘭會館 中秋烤肉</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <style>
 :root{
@@ -144,12 +144,10 @@ section{margin-top:28px;}
   display:flex;align-items:center;gap:10px;
   padding:9px 12px;background:var(--surface-2);border-radius:10px;font-size:14px;
 }
-.roster-row.mine{outline:1.5px solid var(--accent);}
 .roster-row .name{font-weight:700;flex-shrink:0;}
-.roster-row .you-tag{font-size:11px;color:var(--accent);font-weight:700;flex-shrink:0;}
 .roster-row .nums{color:var(--ink-dim);font-variant-numeric:tabular-nums;flex-shrink:0;}
 .roster-row .note{color:var(--ink-dim);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.roster-row .time{margin-left:auto;padding-left:8px;color:var(--ink-dim);font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.roster-row .time{margin-left:auto;padding-left:8px;color:var(--ink-dim);font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0;white-space:nowrap;}
 
 .totals{
   margin-top:10px;display:flex;gap:14px;font-size:13px;color:var(--ink-dim);
@@ -218,7 +216,7 @@ section{margin-top:28px;}
 <div class="topbar">
   <div class="moon">🎑</div>
   <div class="titles">
-    <h1>金蘭中秋烤肉</h1>
+    <h1>金蘭會館 中秋烤肉</h1>
     <div class="sub">2026/09/25（五）・人約黃昏後</div>
     <div class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">連線中…</span></div>
   </div>
@@ -234,7 +232,7 @@ section{margin-top:28px;}
 <section>
   <div class="section-head">
     <h2>回報參加人數</h2>
-    <span class="hint" id="headcountHint">填一次就好，之後想改再填一筆新的</span>
+    <span class="hint" id="headcountHint">同一個名字再送出一次即可修改或取消，系統會再次跟你確認</span>
   </div>
   <div class="card">
     <div class="form-grid">
@@ -257,7 +255,7 @@ section{margin-top:28px;}
     </div>
     <div class="btn-row">
       <span class="form-msg" id="headcountMsg"></span>
-      <button class="btn btn-ghost btn-small" id="cancelHeadcount" hidden>取消我的回報</button>
+      <button class="btn btn-ghost btn-small" id="cancelHeadcount" hidden>取消回報</button>
       <button class="btn btn-primary" id="submitHeadcount">送出回報</button>
     </div>
 
@@ -269,13 +267,13 @@ section{margin-top:28px;}
 <section>
   <div class="section-head">
     <h2>物資與工作認領</h2>
-    <span class="hint">點項目就能認領，多人認領同一項也沒關係；認領錯了可以按 × 取消</span>
+    <span class="hint">點項目就能認領，多人認領同一項也沒關係；認領錯了可以按 × 取消（大家都可以互相幫忙修正）</span>
   </div>
   <div id="categoryList"></div>
 </section>
 
 <div class="footer-note">
-  這頁面會即時同步——你送出回報或認領後，其他人畫面幾秒內就會自動更新，不用重新整理。你自己送出的項目可以編輯或取消，但看不到、也改不動別人的資料。資料存在活動用的 Firebase 資料庫裡，僅供這次活動使用。
+  這頁面會即時同步——你送出回報或認領後，其他人畫面幾秒內就會自動更新，不用重新整理。<b>打一樣的名字再送出就能修改或取消該筆資料</b>，方便大家互相幫忙修正，請小心操作。資料存在活動用的 Firebase 資料庫裡，僅供這次活動使用。
 </div>
 
 <script type="module">
@@ -301,7 +299,6 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 let currentUid = null;
-let didPrefillHeadcount = false;
 
 const CATEGORIES = [
   { key:'staple', name:'主食（肉類／海鮮）', items:['牛肉','羊肉','豬肉','雞肉','魚類','蝦類','貝類／軟體類','內臟類','香腸','丸類','熟食／料理包','鍋物湯底'] },
@@ -321,7 +318,7 @@ function esc(s){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
-function cssAttr(k){ return k.replace(/"/g,'\\"'); }
+function cssAttr(k){ return k.replace(/"/g,'\"'); }
 
 function fmtTime(ts){
   if(!ts || typeof ts.toDate !== 'function') return '';
@@ -337,8 +334,27 @@ function itemsFor(cat){
   return cat.items.concat(customItems[cat.key] || []);
 }
 
-function myHeadcount(){
-  return roster.find(function(r){ return r.ownerUid && r.ownerUid === currentUid; });
+function findHeadcountByName(name){
+  var n = (name||'').trim();
+  if(!n) return null;
+  return roster.find(function(r){ return (r.name||'').trim() === n; });
+}
+
+function updateHeadcountButtons(){
+  var name = document.getElementById('nameInput').value;
+  var match = findHeadcountByName(name);
+  var submitBtn = document.getElementById('submitHeadcount');
+  var cancelBtn = document.getElementById('cancelHeadcount');
+  var hint = document.getElementById('headcountHint');
+  if(match){
+    submitBtn.textContent = '更新回報';
+    cancelBtn.hidden = false;
+    hint.textContent = '偵測到「'+match.name+'」已經回報過，送出／取消前都會再跟你確認一次';
+  } else {
+    submitBtn.textContent = '送出回報';
+    cancelBtn.hidden = true;
+    hint.textContent = '同一個名字再送出一次即可修改或取消，系統會再次跟你確認';
+  }
 }
 
 function renderRoster(){
@@ -347,40 +363,23 @@ function renderRoster(){
   list.innerHTML = roster.map(function(r){
     totalAdults += Number(r.adults)||0;
     totalKids += Number(r.kids)||0;
-    var mine = r.ownerUid && r.ownerUid === currentUid;
-    return '<div class="roster-row'+(mine?' mine':'')+'">'+
+    var timeLabel = (r.updatedAt && typeof r.updatedAt.toDate === 'function')
+      ? '更新 ' + fmtTime(r.updatedAt)
+      : fmtTime(r.ts);
+    return '<div class="roster-row">'+
       '<span class="name">'+esc(r.name)+'</span>'+
-      (mine ? '<span class="you-tag">（你）</span>' : '')+
       '<span class="nums">大'+ (Number(r.adults)||0) +'・小'+ (Number(r.kids)||0) +'</span>'+
       (r.note ? '<span class="note">'+esc(r.note)+'</span>' : '')+
-      '<span class="time">'+fmtTime(r.ts)+'</span>'+
+      '<span class="time">'+timeLabel+'</span>'+
       '</div>';
   }).join('');
 
+  var totalPeople = totalAdults + totalKids;
   document.getElementById('totalsLine').innerHTML =
-    '目前回報：<b>'+roster.length+'</b> 組・大人 <b>'+totalAdults+'</b> 人・小孩 <b>'+totalKids+'</b> 人';
-  document.getElementById('headerCount').textContent = (totalAdults+totalKids)+' 人參加';
+    '目前回報：<b>'+roster.length+'</b> 組・大人 <b>'+totalAdults+'</b> 人・小孩 <b>'+totalKids+'</b> 人・共 <b>'+totalPeople+'</b> 人';
+  document.getElementById('headerCount').textContent = totalPeople+' 人參加（'+totalAdults+'大'+totalKids+'小）';
 
-  var mine = myHeadcount();
-  var submitBtn = document.getElementById('submitHeadcount');
-  var cancelBtn = document.getElementById('cancelHeadcount');
-  var hint = document.getElementById('headcountHint');
-  if(mine){
-    submitBtn.textContent = '更新我的回報';
-    cancelBtn.hidden = false;
-    hint.textContent = '你已經回報過了，改資料後按「更新我的回報」即可';
-    if(!didPrefillHeadcount){
-      document.getElementById('nameInput').value = mine.name || '';
-      document.getElementById('adultsInput').value = mine.adults != null ? mine.adults : 1;
-      document.getElementById('kidsInput').value = mine.kids != null ? mine.kids : 0;
-      document.getElementById('noteInput').value = mine.note || '';
-      didPrefillHeadcount = true;
-    }
-  } else {
-    submitBtn.textContent = '送出回報';
-    cancelBtn.hidden = true;
-    hint.textContent = '填一次就好，之後想改用同一台裝置回來這頁修改即可';
-  }
+  updateHeadcountButtons();
 }
 
 function renderCategories(){
@@ -396,9 +395,8 @@ function renderCategories(){
       var k = cat.key+'::'+name;
       var list = claims[k] || [];
       var chips = list.map(function(c){
-        var mine = c.ownerUid && c.ownerUid === currentUid;
         return '<span class="chip">'+esc(c.name)+(c.detail?'：'+esc(c.detail):'')+
-          (mine ? ' <button class="chip-x" data-cancel-claim="'+esc(c.id)+'" title="取消認領">×</button>' : '')+
+          ' <button class="chip-x" data-cancel-claim="'+esc(c.id)+'" data-cancel-name="'+esc(c.name)+'" data-cancel-item="'+esc(name)+'" title="取消認領">×</button>'+
           '</span>';
       }).join('');
       return '<div class="item-row">'+
@@ -459,6 +457,9 @@ function renderCategories(){
         detail: (detailEl.value||'').trim(),
         ownerUid: currentUid,
         ts: serverTimestamp()
+      }).then(function(){
+        nameEl.value = '';
+        detailEl.value = '';
       }).catch(function(err){ alert('送出失敗，請檢查網路後再試一次：'+err.message); })
         .finally(function(){ btn.disabled = false; });
     });
@@ -467,7 +468,9 @@ function renderCategories(){
     btn.addEventListener('click', function(e){
       e.stopPropagation();
       var id = btn.getAttribute('data-cancel-claim');
-      if(!confirm('確定要取消這項認領嗎？')) return;
+      var claimant = btn.getAttribute('data-cancel-name');
+      var itemName = btn.getAttribute('data-cancel-item');
+      if(!confirm('確定要取消「'+claimant+'」認領的「'+itemName+'」嗎？')) return;
       deleteDoc(doc(db,'claims', id)).catch(function(err){ alert('取消失敗：'+err.message); });
     });
   });
@@ -487,25 +490,43 @@ function renderCategories(){
   });
 }
 
+document.getElementById('nameInput').addEventListener('input', updateHeadcountButtons);
+
 document.getElementById('submitHeadcount').addEventListener('click', function(){
   if(!currentUid){ document.getElementById('headcountMsg').textContent = '連線中，請稍等一下再試'; return; }
   var btn = this;
   var name = (document.getElementById('nameInput').value||'').trim();
   if(!name){ document.getElementById('nameInput').focus(); return; }
-  var mine = myHeadcount();
-  var ref = mine ? doc(db,'headcounts', mine.id) : doc(collection(db,'headcounts'));
-  var payload = {
-    name: name,
-    adults: Number(document.getElementById('adultsInput').value)||0,
-    kids: Number(document.getElementById('kidsInput').value)||0,
-    note: (document.getElementById('noteInput').value||'').trim(),
-    ownerUid: currentUid,
-    ts: serverTimestamp()
-  };
+  var adults = Number(document.getElementById('adultsInput').value)||0;
+  var kids = Number(document.getElementById('kidsInput').value)||0;
+  var note = (document.getElementById('noteInput').value||'').trim();
+  var existing = findHeadcountByName(name);
+  var payload = { name: name, adults: adults, kids: kids, note: note, ownerUid: currentUid };
+  var ref;
+  if(existing){
+    var msg = '原本回報：'+existing.name+' 大'+(Number(existing.adults)||0)+'・小'+(Number(existing.kids)||0)+
+      '
+更新為：大'+adults+'・小'+kids+
+      '
+
+確定要更新嗎？';
+    if(!confirm(msg)) return;
+    ref = doc(db,'headcounts', existing.id);
+    payload.ts = existing.ts || serverTimestamp();
+    payload.updatedAt = serverTimestamp();
+  } else {
+    ref = doc(collection(db,'headcounts'));
+    payload.ts = serverTimestamp();
+  }
   btn.disabled = true;
   document.getElementById('headcountMsg').textContent = '送出中…';
   setDoc(ref, payload).then(function(){
     document.getElementById('headcountMsg').textContent = '已送出！';
+    document.getElementById('nameInput').value = '';
+    document.getElementById('adultsInput').value = '1';
+    document.getElementById('kidsInput').value = '0';
+    document.getElementById('noteInput').value = '';
+    updateHeadcountButtons();
     setTimeout(function(){ document.getElementById('headcountMsg').textContent=''; }, 2000);
   }).catch(function(err){
     document.getElementById('headcountMsg').textContent = '送出失敗：'+err.message;
@@ -513,15 +534,16 @@ document.getElementById('submitHeadcount').addEventListener('click', function(){
 });
 
 document.getElementById('cancelHeadcount').addEventListener('click', function(){
-  var mine = myHeadcount();
-  if(!mine) return;
-  if(!confirm('確定要取消你的參加回報嗎？')) return;
-  deleteDoc(doc(db,'headcounts', mine.id)).then(function(){
-    document.getElementById('nameInput').value='';
-    document.getElementById('adultsInput').value='1';
-    document.getElementById('kidsInput').value='0';
-    document.getElementById('noteInput').value='';
-    didPrefillHeadcount = false;
+  var name = (document.getElementById('nameInput').value||'').trim();
+  var existing = findHeadcountByName(name);
+  if(!existing) return;
+  if(!confirm('確定要取消「'+existing.name+'」的回報嗎？')) return;
+  deleteDoc(doc(db,'headcounts', existing.id)).then(function(){
+    document.getElementById('nameInput').value = '';
+    document.getElementById('adultsInput').value = '1';
+    document.getElementById('kidsInput').value = '0';
+    document.getElementById('noteInput').value = '';
+    updateHeadcountButtons();
   }).catch(function(err){ alert('取消失敗：'+err.message); });
 });
 
