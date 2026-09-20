@@ -114,6 +114,7 @@ section{margin-top:28px;}
 .field.full{grid-column:1/-1;}
 .field label{font-size:12px;color:var(--ink-dim);}
 .field input{
+  width:100%;
   border:1px solid var(--line);
   background:var(--surface-2);
   color:var(--ink);
@@ -147,7 +148,8 @@ section{margin-top:28px;}
 .roster-row .name{font-weight:700;flex-shrink:0;}
 .roster-row .nums{color:var(--ink-dim);font-variant-numeric:tabular-nums;flex-shrink:0;}
 .roster-row .note{color:var(--ink-dim);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.roster-row .time{margin-left:auto;padding-left:8px;color:var(--ink-dim);font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0;white-space:nowrap;}
+.roster-row .row-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.roster-row .time{color:var(--ink-dim);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;}
 
 .totals{
   margin-top:10px;display:flex;gap:14px;font-size:13px;color:var(--ink-dim);
@@ -193,12 +195,14 @@ section{margin-top:28px;}
 .claim-form{display:none;gap:8px;margin-top:8px;}
 .claim-form.open{display:flex;flex-wrap:wrap;}
 .claim-form input{
+  width:100%;
   border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
   border-radius:8px;padding:7px 10px;font-size:13px;flex:1;min-width:90px;
 }
 
 .add-item{display:flex;gap:8px;margin-top:10px;}
 .add-item input{
+  width:100%;
   flex:1;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
   border-radius:8px;padding:8px 10px;font-size:13px;
 }
@@ -255,7 +259,6 @@ section{margin-top:28px;}
     </div>
     <div class="btn-row">
       <span class="form-msg" id="headcountMsg"></span>
-      <button class="btn btn-ghost btn-small" id="cancelHeadcount" hidden>取消回報</button>
       <button class="btn btn-primary" id="submitHeadcount">送出回報</button>
     </div>
 
@@ -344,16 +347,13 @@ function updateHeadcountButtons(){
   var name = document.getElementById('nameInput').value;
   var match = findHeadcountByName(name);
   var submitBtn = document.getElementById('submitHeadcount');
-  var cancelBtn = document.getElementById('cancelHeadcount');
   var hint = document.getElementById('headcountHint');
   if(match){
     submitBtn.textContent = '更新回報';
-    cancelBtn.hidden = false;
-    hint.textContent = '偵測到「'+match.name+'」已經回報過，送出／取消前都會再跟你確認一次';
+    hint.textContent = '偵測到「'+match.name+'」已經回報過，送出前會再跟你確認一次';
   } else {
     submitBtn.textContent = '送出回報';
-    cancelBtn.hidden = true;
-    hint.textContent = '同一個名字再送出一次即可修改或取消，系統會再次跟你確認';
+    hint.textContent = '同一個名字再送出一次即可修改，取消請按名單旁邊的 ×';
   }
 }
 
@@ -370,7 +370,10 @@ function renderRoster(){
       '<span class="name">'+esc(r.name)+'</span>'+
       '<span class="nums">大'+ (Number(r.adults)||0) +'・小'+ (Number(r.kids)||0) +'</span>'+
       (r.note ? '<span class="note">'+esc(r.note)+'</span>' : '')+
-      '<span class="time">'+timeLabel+'</span>'+
+      '<span class="row-right">'+
+        '<span class="time">'+timeLabel+'</span>'+
+        '<button class="chip-x" data-cancel-headcount="'+esc(r.id)+'" data-cancel-name="'+esc(r.name)+'" title="取消回報">×</button>'+
+      '</span>'+
       '</div>';
   }).join('');
 
@@ -378,6 +381,15 @@ function renderRoster(){
   document.getElementById('totalsLine').innerHTML =
     '目前回報：<b>'+roster.length+'</b> 組・大人 <b>'+totalAdults+'</b> 人・小孩 <b>'+totalKids+'</b> 人・共 <b>'+totalPeople+'</b> 人';
   document.getElementById('headerCount').textContent = totalPeople+' 人參加（'+totalAdults+'大'+totalKids+'小）';
+
+  list.querySelectorAll('[data-cancel-headcount]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id = btn.getAttribute('data-cancel-headcount');
+      var name = btn.getAttribute('data-cancel-name');
+      if(!confirm('確定要取消「'+name+'」的回報嗎？')) return;
+      deleteDoc(doc(db,'headcounts', id)).catch(function(err){ alert('取消失敗：'+err.message); });
+    });
+  });
 
   updateHeadcountButtons();
 }
@@ -528,20 +540,6 @@ document.getElementById('submitHeadcount').addEventListener('click', function(){
   }).catch(function(err){
     document.getElementById('headcountMsg').textContent = '送出失敗：'+err.message;
   }).finally(function(){ btn.disabled = false; });
-});
-
-document.getElementById('cancelHeadcount').addEventListener('click', function(){
-  var name = (document.getElementById('nameInput').value||'').trim();
-  var existing = findHeadcountByName(name);
-  if(!existing) return;
-  if(!confirm('確定要取消「'+existing.name+'」的回報嗎？')) return;
-  deleteDoc(doc(db,'headcounts', existing.id)).then(function(){
-    document.getElementById('nameInput').value = '';
-    document.getElementById('adultsInput').value = '1';
-    document.getElementById('kidsInput').value = '0';
-    document.getElementById('noteInput').value = '';
-    updateHeadcountButtons();
-  }).catch(function(err){ alert('取消失敗：'+err.message); });
 });
 
 function setStatus(live){
