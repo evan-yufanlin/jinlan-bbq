@@ -276,18 +276,14 @@ import {
   getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-/* ====== 這裡貼上你自己 Firebase 專案的設定 ======
-   Firebase 主控台 -> 專案設定(齒輪) -> 一般 -> 你的應用程式 -> </> 網頁應用程式
-   複製那邊給你的 firebaseConfig 物件，整包貼進來取代下面這個 */
 const firebaseConfig = {
-  apiKey: "貼上你的 apiKey",
-  authDomain: "你的專案.firebaseapp.com",
-  projectId: "你的專案id",
-  storageBucket: "你的專案.appspot.com",
-  messagingSenderId: "你的訊息傳送者id",
-  appId: "你的appId"
+  apiKey: "AIzaSyBoScKQbsEHoxCLef_nUA9yKVY4etvq0nA",
+  authDomain: "jinlan-bbq-2026.firebaseapp.com",
+  projectId: "jinlan-bbq-2026",
+  storageBucket: "jinlan-bbq-2026.firebasestorage.app",
+  messagingSenderId: "385754910611",
+  appId: "1:385754910611:web:a0cbc8a472ba1a178e2266"
 };
-/* ================================================ */
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
