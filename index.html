@@ -149,7 +149,17 @@ section{margin-top:28px;}
 .form-msg{font-size:12.5px;color:var(--ink-dim);}
 
 /* ---- 名單 ---- */
-.roster{margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}  /* minmax(0,1fr)：欄寬不得被長備註撐開 */
+.roster-toggle{
+  width:100%;margin-top:10px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:10px 12px;background:none;border:1px dashed var(--line);border-radius:10px;
+  color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;text-align:left;
+}
+.roster-toggle:hover{background:var(--surface-2);}
+.roster-toggle .arrow{transition:transform .15s ease;font-size:14px;display:inline-block;color:var(--ink-dim);}
+.roster-toggle.open .arrow{transform:rotate(90deg);}
+.roster{margin-top:8px;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}  /* minmax(0,1fr)：欄寬不得被長備註撐開 */
+.roster[hidden]{display:none;}
 .roster-row{
   display:flex;align-items:center;gap:10px;
   padding:9px 12px;background:var(--surface-2);border-radius:10px;font-size:14px;
@@ -307,8 +317,11 @@ section{margin-top:28px;}
       <button class="btn btn-primary" id="submitHeadcount">送出回報</button>
     </div>
 
-    <div class="roster" id="rosterList"></div>
     <div class="totals" id="totalsLine"></div>
+    <button class="roster-toggle" id="rosterToggle" type="button">
+      <span id="rosterToggleText">查看名單</span><span class="arrow">›</span>
+    </button>
+    <div class="roster" id="rosterList" hidden></div>
   </div>
 </section>
 
@@ -381,6 +394,12 @@ const CATEGORIES = [
 ];
 
 let openCat = 'food';
+let rosterOpen = false;
+try { rosterOpen = localStorage.getItem('rosterOpen') === '1'; } catch(e) {}
+function setRosterOpen(v){
+  rosterOpen = v;
+  try { localStorage.setItem('rosterOpen', v ? '1' : '0'); } catch(e) {}
+}
 let roster = [];
 let claims = {};     // itemKey -> [{id, name, detail, ownerUid}]
 let customItems = {}; // category -> [name]
@@ -458,6 +477,12 @@ function renderRoster(){
     '<div class="stat"><span class="v">'+totalKids+'</span><span class="k">小孩</span></div>'+
     '<div class="stat total"><span class="v">'+totalPeople+'</span><span class="k">共計</span></div>';
   document.getElementById('headerCount').textContent = totalPeople+' 人參加（'+totalAdults+'大'+totalKids+'小）';
+
+  var toggle = document.getElementById('rosterToggle');
+  document.getElementById('rosterToggleText').textContent =
+    (rosterOpen ? '收合名單' : '查看名單') + '（' + roster.length + ' 組）';
+  toggle.classList.toggle('open', rosterOpen);
+  list.hidden = !rosterOpen;
 
   list.querySelectorAll('[data-cancel-headcount]').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -582,6 +607,11 @@ function renderCategories(){
 
 document.getElementById('nameInput').addEventListener('input', updateHeadcountButtons);
 
+document.getElementById('rosterToggle').addEventListener('click', function(){
+  setRosterOpen(!rosterOpen);
+  renderRoster();
+});
+
 document.getElementById('submitHeadcount').addEventListener('click', function(){
   if(!currentUid){ document.getElementById('headcountMsg').textContent = '連線中，請稍等一下再試'; return; }
   var btn = this;
@@ -608,6 +638,7 @@ document.getElementById('submitHeadcount').addEventListener('click', function(){
   btn.disabled = true;
   document.getElementById('headcountMsg').textContent = '送出中…';
   setDoc(ref, payload).then(function(){
+    setRosterOpen(true);
     document.getElementById('headcountMsg').textContent = '已送出！';
     document.getElementById('nameInput').value = '';
     document.getElementById('adultsInput').value = '1';
