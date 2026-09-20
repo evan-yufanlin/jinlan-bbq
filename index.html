@@ -505,11 +505,8 @@ document.getElementById('submitHeadcount').addEventListener('click', function(){
   var ref;
   if(existing){
     var msg = '原本回報：'+existing.name+' 大'+(Number(existing.adults)||0)+'・小'+(Number(existing.kids)||0)+
-      '
-更新為：大'+adults+'・小'+kids+
-      '
-
-確定要更新嗎？';
+      ' → 更新為：大'+adults+'・小'+kids+
+      '，確定要更新嗎？';
     if(!confirm(msg)) return;
     ref = doc(db,'headcounts', existing.id);
     payload.ts = existing.ts || serverTimestamp();
